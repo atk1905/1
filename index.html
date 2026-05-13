@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=2732, initial-scale=0.5, user-scalable=yes">
+<title>Trainer Ataoglu</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- VexFlow -->
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<!-- Tone.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════
+   CSS VARIABLES & RESET
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #0e0f12;
+  --surface:     #15161b;
+  --surface2:    #1c1d24;
+  --border:      #2a2b35;
+  --accent:      #c8a96e;
+  --accent2:     #7ec8a9;
+  --danger:      #e06c75;
+  --success:     #7ec8a9;
+  --text:        #e8e4dc;
+  --text-dim:    #8a8799;
+  --note-wait:   #4a9eff;
+  --note-ok:     #7ec8a9;
+  --note-wrong:  #e06c75;
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-mono:    'DM Mono', 'Courier New', monospace;
+  --font-body:    'DM Sans', sans-serif;
+
+  /* iPad Air 13" = 2732×2048 @0.5 → 1366×1024 CSS px */
+  --app-w: 1366px;
+  --app-h: 1024px;
+}
+
+html, body {
+  width: var(--app-w);
+  height: var(--app-h);
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ═══════════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════════ */
+#app {
+  display: grid;
+  grid-template-rows: 56px 1fr 72px;
+  grid-template-columns: 240px 1fr;
+  width: var(--app-w);
+  height: var(--app-h);
+}
+
+/* ═══════════════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════════════ */
+#topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+
+.app-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.app-title .treble { font-size: 26px; opacity: 0.8; }
+
+.topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.level-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.level-badge span {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.midi-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.midi-status:hover { border-color: var(--accent); }
+.midi-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  transition: background 0.3s;
+  box-shadow: 0 0 6px currentColor;
+}
+.midi-dot.connected { background: var(--success); }
+.midi-label { color: var(--text-dim); }
+
+/* ═══════════════════════════════════════════════
+   LEFT SIDEBAR
+═══════════════════════════════════════════════ */
+#sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 20px 0;
+}
+#sidebar::-webkit-scrollbar { width: 4px; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.nav-section-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 0 20px 10px;
+  margin-top: 10px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+  font-size: 14px;
+  color: var(--text-dim);
+  user-select: none;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active {
+  background: var(--surface2);
+  border-left-color: var(--accent);
+  color: var(--text);
+}
+.nav-item.active .nav-icon { color: var(--accent); }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.nav-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 20px;
+}
+
+.level-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.level-pip {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.level-pip.filled { background: var(--accent); }
+
+/* ═══════════════════════════════════════════════
+   MAIN CONTENT AREA
+═══════════════════════════════════════════════ */
+#main {
+  background: var(--bg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Score header info */
+.score-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.piece-info h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.piece-info p {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+
+.score-stats {
+  display: flex;
+  gap: 28px;
+}
+.stat {
+  text-align: center;
+}
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--accent);
+  display: block;
+}
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+/* Sheet Music Canvas */
+#score-container {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 20px 28px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+#score-container::-webkit-scrollbar { height: 6px; }
+#score-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+#vexflow-canvas {
+  background: transparent;
+}
+
+/* Current note highlight feedback */
+.note-feedback {
+  position: absolute;
+  bottom: 10px;
+  right: 28px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+.note-feedback .nf-key {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin-left: 6px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════
+   BOTTOM BAR (TRANSPORT)
+═══════════════════════════════════════════════ */
+#bottombar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 28px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.transport-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.transport-btn {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  outline: none;
+}
+.transport-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: scale(1.05);
+}
+.transport-btn.primary {
+  width: 48px; height: 48px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-size: 17px;
+}
+.transport-btn.primary:hover {
+  background: #d4b87a;
+  color: var(--bg);
+  transform: scale(1.08);
+}
+.transport-btn.active {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.separator { width: 1px; height: 36px; background: var(--border); margin: 0 4px; }
+
+/* BPM Control */
+.bpm-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bpm-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.bpm-display {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--accent);
+  min-width: 48px;
+  text-align: center;
+}
+.bpm-slider {
+  -webkit-appearance: none;
+  width: 140px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--pct, 50%), var(--border) var(--pct, 50%));
+  outline: none;
+  cursor: pointer;
+}
+.bpm-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 8px rgba(200,169,110,0.4);
+  transition: transform 0.1s;
+}
+.bpm-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+/* Progress */
+.progress-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 8px;
+}
+.progress-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.progress-bar-track {
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.3s;
+}
+
+/* Mode toggle */
+.mode-section {
+  display: flex;
+  gap: 4px;
+}
+.mode-btn {
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s;
+  outline: none;
+}
+.mode-btn:hover { color: var(--text); border-color: var(--text-dim); }
+.mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════
+   MIDI LOG OVERLAY (debug)
+═══════════════════════════════════════════════ */
+#midi-log {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  width: 260px;
+  max-height: 180px;
+  background: rgba(15,16,20,0.92);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  z-index: 100;
+  display: none;
+}
+#midi-log.visible { display: block; }
+.midi-log-title {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+.midi-event { padding: 2px 0; border-bottom: 1px solid rgba(42,43,53,0.5); }
+.midi-event .note-on { color: var(--success); }
+.midi-event .note-off { color: var(--text-dim); }
+
+/* ═══════════════════════════════════════════════
+   NOTIFICATION TOAST
+═══════════════════════════════════════════════ */
+#toast {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ═══════════════════════════════════════════════
+   LOADING SCREEN
+═══════════════════════════════════════════════ */
+#loading {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 999;
+  transition: opacity 0.6s;
+}
+#loading.hidden { opacity: 0; pointer-events: none; }
+.loading-title {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.loading-sub {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.loading-bar {
+  width: 200px;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.loading-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+  animation: loadingAnim 1.4s ease-in-out forwards;
+}
+@keyframes loadingAnim {
+  0%   { width: 0%; }
+  60%  { width: 75%; }
+  100% { width: 100%; }
+}
+
+/* Subtle scan-line texture overlay */
+#app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.03) 0px,
+    rgba(0,0,0,0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 50;
+}
+
+/* ═══════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════ */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.midi-dot.connecting { animation: pulse 0.8s infinite; background: var(--accent); }
+
+.nav-item { animation: fadeSlideIn 0.3s ease both; }
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loading">
+  <div class="loading-title">Trainer Ataoglu</div>
+  <div class="loading-sub">Piyano Eğitim Sistemi</div>
+  <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- APP SHELL -->
+<div id="app">
+
+  <!-- TOP BAR -->
+  <header id="topbar">
+    <div class="app-title">
+      <span class="treble">𝄞</span>
+      Trainer Ataoglu
+    </div>
+
+    <div class="topbar-center">
+      <div class="level-badge">Aktif Seviye: <span id="active-level-label">Seviye 1</span></div>
+      <div class="level-badge">Parça: <span id="active-piece-label">—</span></div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:center;">
+      <button class="midi-status" id="midi-btn" onclick="connectMIDI()">
+        <div class="midi-dot" id="midi-dot"></div>
+        <span class="midi-label" id="midi-label">MIDI Bağlantısı Yok</span>
+      </button>
+      <button class="transport-btn" title="MIDI Log" onclick="toggleMidiLog()" style="font-size:12px;font-family:var(--font-mono);">LOG</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="nav-section-title">Eğitim Seviyeleri</div>
+
+    <div class="nav-item active" onclick="selectLevel(1,this)">
+      <span class="nav-icon">①</span>
+      Seviye 1 — Başlangıç
+      <div class="level-indicator">
+        <div class="level-pip filled"></div>
+        <div class="level-pip"></div><div class="level-pip"></div><div class="level-pip"></div><div class="level-pip"></div>
+      </div>
+    </div>
+    <div class="nav-item" onclick="selectLevel(2,this)">
+      <span class="nav-icon">②</span>
+      Seviye 2 — Sol El
+      <div class="level-indicator">
+        <div class="level-pip filled"></div><div class="level-pip filled"></div>
+        <div class="level-pip"></div><div class="level-pip"></div><div class="level-pip"></div>
+      </div>
+    </div>
+    <div class="nav-item" onclick="selectLevel(3,this)">
+      <span class="nav-icon">③</span>
+      Seviye 3 — İki El
+      <div class="level-indicator">
+        <div class="level-pip filled"></div><div class="level-pip filled"></div><div class="level-pip filled"></div>
+        <div class="level-pip"></div><div class="level-pip"></div>
+      </div>
+    </div>
+    <div class="nav-item" onclick="selectLevel(4,this)">
+      <span class="nav-icon">④</span>
+      Seviye 4 — Armoni
+      <div class="level-indicator">
+        <div class="level-pip filled"></div><div class="level-pip filled"></div><div class="level-pip filled"></div><div class="level-pip filled"></div>
+        <div class="level-pip"></div>
+      </div>
+    </div>
+    <div class="nav-item" onclick="selectLevel(5,this)">
+      <span class="nav-icon">⑤</span>
+      Seviye 5 — İleri
+      <div class="level-indicator">
+        <div class="level-pip filled"></div><div class="level-pip filled"></div><div class="level-pip filled"></div><div class="level-pip filled"></div><div class="level-pip filled"></div>
+      </div>
+    </div>
+
+    <div class="nav-separator"></div>
+    <div class="nav-section-title">Repertuar</div>
+
+    <div class="nav-item" onclick="selectCategory('top50',this)">
+      <span class="nav-icon">♩</span>
+      Top 50 Parça
+      <span class="nav-badge">50</span>
+    </div>
+    <div class="nav-item" onclick="selectCategory('classics',this)">
+      <span class="nav-icon">♪</span>
+      Klasikler
+      <span class="nav-badge">18</span>
+    </div>
+    <div class="nav-item" onclick="selectCategory('exercises',this)">
+      <span class="nav-icon">♫</span>
+      Egzersizler
+      <span class="nav-badge">30</span>
+    </div>
+
+    <div class="nav-separator"></div>
+    <div class="nav-section-title">Parça Listesi</div>
+    <div id="piece-list"></div>
+  </nav>
+
+  <!-- MAIN SCORE AREA -->
+  <main id="main">
+    <div class="score-header">
+      <div class="piece-info">
+        <h2 id="piece-title">Ode to Joy</h2>
+        <p id="piece-meta">Ludwig van Beethoven · Seviye 1 · 4/4</p>
+      </div>
+      <div class="score-stats">
+        <div class="stat">
+          <span class="stat-value" id="stat-correct">0</span>
+          <span class="stat-label">Doğru</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-wrong">0</span>
+          <span class="stat-label">Yanlış</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-accuracy">—</span>
+          <span class="stat-label">İsabet</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-note-index">1</span>
+          <span class="stat-label">Nota</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="score-container">
+      <svg id="vexflow-canvas"></svg>
+    </div>
+
+    <div class="note-feedback">
+      Beklenen nota: <span class="nf-key" id="expected-note">—</span>
+      Son basılan: <span class="nf-key" id="last-pressed">—</span>
+    </div>
+  </main>
+
+  <!-- BOTTOM TRANSPORT BAR -->
+  <footer id="bottombar">
+    <div class="transport-section">
+      <button class="transport-btn" onclick="stopPlayback()" title="Durdur">■</button>
+      <button class="transport-btn primary" id="play-btn" onclick="togglePlay()" title="Çal / Duraklat">▶</button>
+      <button class="transport-btn" onclick="resetPiece()" title="Başa Al">↺</button>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="bpm-section">
+      <span class="bpm-label">BPM</span>
+      <span class="bpm-display" id="bpm-display">80</span>
+      <input type="range" class="bpm-slider" id="bpm-slider"
+        min="40" max="200" value="80"
+        oninput="updateBPM(this.value)">
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="mode-section">
+      <button class="mode-btn active" id="mode-trainer" onclick="setMode('trainer',this)">EĞİTMEN</button>
+      <button class="mode-btn" id="mode-listen" onclick="setMode('listen',this)">DİNLE</button>
+      <button class="mode-btn" id="mode-free" onclick="setMode('free',this)">SERBEST</button>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="progress-section">
+      <span class="progress-label" id="progress-label">0 / 0 nota</span>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- MIDI LOG PANEL -->
+<div id="midi-log">
+  <div class="midi-log-title">
+    <span>MIDI LOG</span>
+    <span id="midi-log-count">0 event</span>
+  </div>
+  <div id="midi-log-events"></div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   KART 4: MÜZIK VERİTABANI (JSON)
+══════════════════════════════════════════════════════════════ */
+const DB = {
+  levels: [
+    {
+      id: 1, name: "Seviye 1 — Başlangıç",
+      description: "Sadece sağ el, C4–G4 arası",
+      hands: ["right"],
+      range: { min: 60, max: 67 }
+    },
+    {
+      id: 2, name: "Seviye 2 — Sol El Eklentisi",
+      description: "İki el, tek oktav",
+      hands: ["right","left"],
+      range: { min: 48, max: 72 }
+    },
+    {
+      id: 3, name: "Seviye 3 — İki El",
+      description: "Paralel melodi ve eşlik",
+      hands: ["right","left"],
+      range: { min: 43, max: 77 }
+    },
+    {
+      id: 4, name: "Seviye 4 — Armoni",
+      description: "Akorlar ve diatonik armoni",
+      hands: ["right","left"],
+      range: { min: 36, max: 84 }
+    },
+    {
+      id: 5, name: "Seviye 5 — İleri",
+      description: "Karmaşık ritimler ve dinamikler",
+      hands: ["right","left"],
+      range: { min: 28, max: 96 }
+    }
+  ],
+
+  repertoire: [
+    /* ── PARÇA 1 ─── */
+    {
+      id: "ode_to_joy",
+      title: "Ode to Joy",
+      composer: "L. van Beethoven",
+      level: 1,
+      category: ["top50","classics"],
+      timeSignature: { beats: 4, noteValue: 4 },
+      bpm: 100,
+      treble: [
+        // right hand: E E F G G F E D C C D E E. D (simplified)
+        { keys:["e/4"], duration:"q" },
+        { keys:["e/4"], duration:"q" },
+        { keys:["f/4"], duration:"q" },
+        { keys:["g/4"], duration:"q" },
+        { keys:["g/4"], duration:"q" },
+        { keys:["f/4"], duration:"q" },
+        { keys:["e/4"], duration:"q" },
+        { keys:["d/4"], duration:"q" },
+        { keys:["c/4"], duration:"q" },
+        { keys:["c/4"], duration:"q" },
+        { keys:["d/4"], duration:"q" },
+        { keys:["e/4"], duration:"q" },
+        { keys:["e/4"], duration:"qd" },
+        { keys:["d/4"], duration:"8" },
+        { keys:["d/4"], duration:"h" },
+      ],
+      bass: []
+    },
+
+    /* ── PARÇA 2 ─── */
+    {
+      id: "twinkle",
+      title: "Twinkle Twinkle Little Star",
+      composer: "Traditional",
+      level: 1,
+      category: ["top50"],
+      timeSignature: { beats: 4, noteValue: 4 },
+      bpm: 90,
+      treble: [
+        { keys:["c/4"], duration:"q" },
+        { keys:["c/4"], duration:"q" },
+        { keys:["g/4"], duration:"q" },
+        { keys:["g/4"], duration:"q" },
+        { keys:["a/4"], duration:"q" },
+        { keys:["a/4"], duration:"q" },
+        { keys:["g/4"], duration:"h" },
+        { keys:["f/4"], duration:"q" },
+        { keys:["f/4"], duration:"q" },
+        { keys:["e/4"], duration:"q" },
+        { keys:["e/4"], duration:"q" },
+        { keys:["d/4"], duration:"q" },
+        { keys:["d/4"], duration:"q" },
+        { keys:["c/4"], duration:"h" },
+      ],
+      bass: []
+    },
+
+    /* ── PARÇA 3 ─── */
+    {
+      id: "minuet_g",
+      title: "Minuet in G",
+      composer: "J.S. Bach",
+      level: 2,
+      category: ["top50","classics"],
+      timeSignature: { beats: 3, noteValue: 4 },
+      bpm: 120,
+      treble: [
+        { keys:["d/5"], duration:"q" },
+        { keys:["g/4"], duration:"q" },
+        { keys:["a/4"], duration:"q" },
+        { keys:["b/4"], duration:"q" },
+        { keys:["c/5"], duration:"q" },
+        { keys:["d/5"], duration:"q" },
+        { keys:["g/5"], duration:"h" },
+        { keys:["g/4"], duration:"q" },
+        { keys:["e/5"], duration:"q" },
+        { keys:["c/5"], duration:"q" },
+        { keys:["d/5"], duration:"q" },
+        { keys:["c/5"], duration:"q" },
+        { keys:["b/4"], duration:"q" },
+        { keys:["a/4"], duration:"h."},
+      ],
+      bass: [
+        { keys:["g/3"], duration:"h" },
+        { keys:["d/3"], duration:"q" },
+        { keys:["g/3"], duration:"h" },
+        { keys:["d/3"], duration:"q" },
+        { keys:["g/3"], duration:"h" },
+        { keys:["d/3"], duration:"q" },
+        { keys:["g/3"], duration:"h."},
+      ]
+    }
+  ],
+
+  exercises: [
+    {
+      id: "c_scale",
+      title: "C Majör Gam",
+      level: 1,
+      category: ["exercises"],
+      treble: [
+        { keys:["c/4"], duration:"q" },
+        { keys:["d/4"], duration:"q" },
+        { keys:["e/4"], duration:"q" },
+        { keys:["f/4"], duration:"q" },
+        { keys:["g/4"], duration:"q" },
+        { keys:["a/4"], duration:"q" },
+        { keys:["b/4"], duration:"q" },
+        { keys:["c/5"], duration:"q" },
+      ],
+      bass: []
+    },
+    {
+      id: "five_finger",
+      title: "Beş Parmak Egzersizi",
+      level: 1,
+      category: ["exercises"],
+      treble: [
+        { keys:["c/4"], duration:"q" },
+        { keys:["d/4"], duration:"q" },
+        { keys:["e/4"], duration:"q" },
+        { keys:["f/4"], duration:"q" },
+        { keys:["g/4"], duration:"h" },
+        { keys:["f/4"], duration:"q" },
+        { keys:["e/4"], duration:"q" },
+        { keys:["d/4"], duration:"q" },
+        { keys:["c/4"], duration:"q" },
+      ],
+      bass: []
+    },
+    {
+      id: "broken_chord",
+      title: "Kırık Akor — C Majör",
+      level: 2,
+      category: ["exercises"],
+      treble: [
+        { keys:["c/4"], duration:"8" },
+        { keys:["e/4"], duration:"8" },
+        { keys:["g/4"], duration:"8" },
+        { keys:["c/5"], duration:"8" },
+        { keys:["g/4"], duration:"8" },
+        { keys:["e/4"], duration:"8" },
+        { keys:["c/4"], duration:"q" },
+      ],
+      bass: []
+    }
+  ]
+};
+
+/* MIDI Note → Nota adı dönüştürücü */
+const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+function midiToName(n){ return NOTE_NAMES[n%12] + Math.floor(n/12-1); }
+
+/* VexFlow keys → MIDI no */
+const VF_KEY_TO_MIDI = {
+  "c":0,"d":2,"e":4,"f":5,"g":7,"a":9,"b":11
+};
+function vfKeyToMidi(key) {
+  // format: "c/4"
+  const [note, oct] = key.split("/");
+  return (parseInt(oct)+1)*12 + VF_KEY_TO_MIDI[note.toLowerCase()];
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════════ */
+const state = {
+  currentPiece: DB.repertoire[0],
+  currentLevel: 1,
+  mode: "trainer",      // trainer | listen | free
+  bpm: 80,
+  isPlaying: false,
+  noteIndex: 0,         // current note in trainer mode
+  correct: 0,
+  wrong: 0,
+  midiAccess: null,
+  midiConnected: false,
+  playbackTimer: null,
+};
+
+/* ══════════════════════════════════════════════════════════════
+   KART 3: AUDIO ENGINE (Tone.js)
+══════════════════════════════════════════════════════════════ */
+let synth = null;
+
+async function initAudio() {
+  await Tone.start();
+  synth = new Tone.Sampler({
+    urls: {
+      C4: "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3", A4: "A4.mp3",
+    },
+    release: 1,
+    baseUrl: "https://tonejs.github.io/audio/salamander/",
+    onload: () => showToast("🎹 Piyano sesleri yüklendi"),
+  }).toDestination();
+}
+
+function durationToSeconds(dur, bpm) {
+  const q = 60 / bpm;
+  const map = { "w":q*4,"h":q*2,"q":q,"8":q/2,"16":q/4,
+                "hd":q*3,"qd":q*1.5,"h.":q*3,"q.":q*1.5 };
+  return map[dur] || q;
+}
+
+function playNote(key, duration) {
+  if (!synth) return;
+  const [note, oct] = key.split("/");
+  const toneName = note.toUpperCase().replace("#","#") + oct;
+  synth.triggerAttackRelease(toneName, duration * 0.9);
+}
+
+function playSequence(notes, bpm, onNotePlayed) {
+  let t = Tone.now() + 0.05;
+  notes.forEach((n, i) => {
+    const dur = durationToSeconds(n.duration, bpm);
+    n.keys.forEach(k => {
+      if(synth) synth.triggerAttackRelease(
+        k.split("/")[0].toUpperCase() + k.split("/")[1],
+        dur * 0.85, t
+      );
+    });
+    if(onNotePlayed) {
+      const idx = i;
+      Tone.Transport.schedule(time => { onNotePlayed(idx); }, t);
+    }
+    t += dur;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   KART 4: VexFlow NOTASYON
+══════════════════════════════════════════════════════════════ */
+const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
+
+let vfRenderer = null;
+let vfContext = null;
+
+function initVexFlow() {
+  const container = document.getElementById("vexflow-canvas");
+  vfRenderer = new Renderer(container, Renderer.Backends.SVG);
+  vfRenderer.resize(1060, 300);
+  vfContext = vfRenderer.getContext();
+  vfContext.setFont("Bravura", 12);
+}
+
+function drawScore(piece) {
+  if(!vfContext) return;
+  vfContext.clear();
+
+  const notes = piece.treble;
+  const bassNotes = piece.bass || [];
+  const ts = piece.timeSignature;
+
+  const staveW = Math.max(920, notes.length * 55 + 120);
+  vfRenderer.resize(staveW + 60, bassNotes.length > 0 ? 340 : 200);
+
+  // Treble
+  const trebleStave = new Stave(30, 40, staveW);
+  trebleStave.addClef("treble").addTimeSignature(`${ts.beats}/${ts.noteValue}`);
+  trebleStave.setStyle({ strokeStyle: "#8a8799", fillStyle: "#8a8799" });
+  trebleStave.setContext(vfContext).draw();
+
+  const vfNotes = notes.map((n, i) => {
+    const sn = new StaveNote({
+      keys: n.keys,
+      duration: n.duration,
+      clef: "treble"
+    });
+    sn.setStyle({
+      fillStyle: i === state.noteIndex && state.mode === "trainer" ? "#4a9eff" : "#c8c0b0",
+      strokeStyle: i === state.noteIndex && state.mode === "trainer" ? "#4a9eff" : "#c8c0b0"
+    });
+    // accidentals
+    n.keys.forEach((k, ki) => {
+      if(k.includes("#")) sn.addModifier(new Accidental("#"), ki);
+      if(k.includes("b")) sn.addModifier(new Accidental("b"), ki);
+    });
+    return sn;
+  });
+
+  try {
+    const voice = new Voice({ num_beats: ts.beats, beat_value: ts.noteValue })
+      .setMode(Voice.Mode.SOFT);
+    voice.addTickables(vfNotes);
+    new Formatter().joinVoices([voice]).format([voice], staveW - 80);
+    voice.draw(vfContext, trebleStave);
+  } catch(e) {
+    console.warn("VexFlow render:", e.message);
+  }
+
+  // Bass clef
+  if(bassNotes.length > 0) {
+    const bassStave = new Stave(30, 180, staveW);
+    bassStave.addClef("bass").addTimeSignature(`${ts.beats}/${ts.noteValue}`);
+    bassStave.setStyle({ strokeStyle: "#8a8799", fillStyle: "#8a8799" });
+    bassStave.setContext(vfContext).draw();
+
+    const bfNotes = bassNotes.map(n => {
+      const sn = new StaveNote({ keys: n.keys, duration: n.duration, clef:"bass" });
+      sn.setStyle({ fillStyle:"#c8c0b0", strokeStyle:"#c8c0b0" });
+      n.keys.forEach((k,ki) => {
+        if(k.includes("#")) sn.addModifier(new Accidental("#"), ki);
+      });
+      return sn;
+    });
+
+    try {
+      const bv = new Voice({ num_beats: ts.beats, beat_value: ts.noteValue })
+        .setMode(Voice.Mode.SOFT);
+      bv.addTickables(bfNotes);
+      new Formatter().joinVoices([bv]).format([bv], staveW - 80);
+      bv.draw(vfContext, bassStave);
+    } catch(e) {}
+  }
+}
+
+function highlightNote(index, color) {
+  // Re-draw with updated note index color
+  const notes = state.currentPiece.treble;
+  if(!vfContext || index >= notes.length) return;
+  // Quick approach: re-render full score
+  state.noteIndex = index;
+  drawScore(state.currentPiece);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   KART 2: WEB MIDI API
+══════════════════════════════════════════════════════════════ */
+let midiLogCount = 0;
+
+async function connectMIDI() {
+  const dot = document.getElementById("midi-dot");
+  const label = document.getElementById("midi-label");
+  dot.classList.add("connecting");
+  label.textContent = "Bağlanıyor...";
+
+  if(!navigator.requestMIDIAccess) {
+    showToast("⚠️ Bu tarayıcı Web MIDI API desteklemiyor");
+    dot.classList.remove("connecting");
+    label.textContent = "MIDI Desteklenmiyor";
+    return;
+  }
+
+  try {
+    const access = await navigator.requestMIDIAccess({ sysex: false });
+    state.midiAccess = access;
+
+    dot.classList.remove("connecting");
+
+    const inputs = [...access.inputs.values()];
+    if(inputs.length === 0) {
+      label.textContent = "MIDI Cihaz Bulunamadı";
+      showToast("⚠️ MIDI cihazı bulunamadı. Kawai CX102'yi bağlayın.");
+      return;
+    }
+
+    dot.classList.add("connected");
+    label.textContent = inputs[0].name || "MIDI Bağlandı";
+    state.midiConnected = true;
+    showToast(`✅ Bağlandı: ${inputs[0].name}`);
+
+    inputs.forEach(input => {
+      input.onmidimessage = handleMIDIMessage;
+    });
+
+    // Hot-plug
+    access.onstatechange = e => {
+      if(e.port.type === "input") {
+        if(e.port.state === "connected") {
+          e.port.onmidimessage = handleMIDIMessage;
+          dot.classList.add("connected");
+          label.textContent = e.port.name;
+          showToast(`🔌 Bağlandı: ${e.port.name}`);
+        } else {
+          dot.classList.remove("connected");
+          label.textContent = "MIDI Bağlantısı Kesildi";
+          showToast("⚠️ MIDI bağlantısı kesildi");
+        }
+      }
+    };
+
+  } catch(err) {
+    dot.classList.remove("connecting");
+    label.textContent = "Erişim Reddedildi";
+    showToast("❌ MIDI erişimi reddedildi: " + err.message);
+  }
+}
+
+function handleMIDIMessage(event) {
+  const [status, note, velocity] = event.data;
+  const type = status & 0xf0;
+
+  if(type === 0x90 && velocity > 0) {
+    // Note On
+    logMIDIEvent("note_on", note, velocity);
+    document.getElementById("last-pressed").textContent = midiToName(note);
+    if(state.mode === "trainer" && !state.isPlaying) {
+      evaluateNote(note);
+    }
+  } else if(type === 0x80 || (type === 0x90 && velocity === 0)) {
+    // Note Off
+    logMIDIEvent("note_off", note, velocity);
+  }
+}
+
+function logMIDIEvent(type, note, vel) {
+  midiLogCount++;
+  document.getElementById("midi-log-count").textContent = midiLogCount + " event";
+  const container = document.getElementById("midi-log-events");
+  const div = document.createElement("div");
+  div.className = "midi-event";
+  div.innerHTML = `<span class="${type === 'note_on' ? 'note-on':'note-off'}">${type.toUpperCase()}</span> · ${midiToName(note)} (${note}) · vel:${vel}`;
+  container.prepend(div);
+  if(container.children.length > 40) container.lastChild.remove();
+  console.log(`[MIDI] ${type} | Note: ${note} (${midiToName(note)}) | Vel: ${vel}`);
+}
+
+function toggleMidiLog() {
+  document.getElementById("midi-log").classList.toggle("visible");
+}
+
+/* ══════════════════════════════════════════════════════════════
+   KART 5: CORE TRAINER LOOP
+══════════════════════════════════════════════════════════════ */
+function evaluateNote(midiNote) {
+  const notes = state.currentPiece.treble;
+  if(state.noteIndex >= notes.length) return;
+
+  const expectedNote = notes[state.noteIndex];
+  const expectedMidi = vfKeyToMidi(expectedNote.keys[0]);
+
+  if(midiNote === expectedMidi) {
+    // Correct!
+    state.correct++;
+    document.getElementById("stat-correct").textContent = state.correct;
+    updateAccuracy();
+    playNote(expectedNote.keys[0], durationToSeconds(expectedNote.duration, state.bpm));
+    state.noteIndex++;
+    document.getElementById("stat-note-index").textContent = state.noteIndex + 1;
+    updateProgress();
+    drawScore(state.currentPiece);
+    updateExpectedNote();
+
+    if(state.noteIndex >= notes.length) {
+      showToast("🎉 Tebrikler! Parçayı tamamladınız!");
+      state.noteIndex = 0;
+      setTimeout(() => { drawScore(state.currentPiece); updateExpectedNote(); }, 1200);
+    }
+  } else {
+    // Wrong
+    state.wrong++;
+    document.getElementById("stat-wrong").textContent = state.wrong;
+    updateAccuracy();
+    // Flash red briefly
+    const exp = document.getElementById("expected-note");
+    exp.style.color = "var(--note-wrong)";
+    setTimeout(() => { exp.style.color = ""; }, 400);
+  }
+}
+
+function updateExpectedNote() {
+  const notes = state.currentPiece.treble;
+  if(state.noteIndex < notes.length) {
+    const key = notes[state.noteIndex].keys[0];
+    const [n, oct] = key.split("/");
+    document.getElementById("expected-note").textContent = n.toUpperCase() + oct;
+  } else {
+    document.getElementById("expected-note").textContent = "—";
+  }
+}
+
+function updateAccuracy() {
+  const total = state.correct + state.wrong;
+  if(total === 0) { document.getElementById("stat-accuracy").textContent = "—"; return; }
+  document.getElementById("stat-accuracy").textContent = Math.round(state.correct/total*100) + "%";
+}
+
+function updateProgress() {
+  const notes = state.currentPiece.treble;
+  const pct = notes.length > 0 ? (state.noteIndex / notes.length * 100) : 0;
+  document.getElementById("progress-fill").style.width = pct + "%";
+  document.getElementById("progress-label").textContent = `${state.noteIndex} / ${notes.length} nota`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TRANSPORT CONTROLS
+══════════════════════════════════════════════════════════════ */
+async function togglePlay() {
+  if(!synth) await initAudio();
+  const btn = document.getElementById("play-btn");
+
+  if(state.isPlaying) {
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+    state.isPlaying = false;
+    btn.textContent = "▶";
+    btn.classList.remove("active");
+  } else {
+    state.isPlaying = true;
+    btn.textContent = "⏸";
+    btn.classList.add("active");
+    playSequence(state.currentPiece.treble, state.bpm, idx => {
+      highlightNote(idx, "#4a9eff");
+      document.getElementById("stat-note-index").textContent = idx + 1;
+      updateProgress();
+    });
+    // Auto-stop after last note
+    const totalDur = state.currentPiece.treble.reduce((acc, n) =>
+      acc + durationToSeconds(n.duration, state.bpm), 0);
+    setTimeout(() => {
+      state.isPlaying = false;
+      btn.textContent = "▶";
+      btn.classList.remove("active");
+    }, totalDur * 1000 + 500);
+  }
+}
+
+function stopPlayback() {
+  Tone.Transport.stop();
+  Tone.Transport.cancel();
+  state.isPlaying = false;
+  document.getElementById("play-btn").textContent = "▶";
+  document.getElementById("play-btn").classList.remove("active");
+  state.noteIndex = 0;
+  drawScore(state.currentPiece);
+  updateExpectedNote();
+  updateProgress();
+}
+
+function resetPiece() {
+  stopPlayback();
+  state.correct = 0; state.wrong = 0;
+  document.getElementById("stat-correct").textContent = "0";
+  document.getElementById("stat-wrong").textContent = "0";
+  document.getElementById("stat-accuracy").textContent = "—";
+  updateProgress();
+}
+
+function updateBPM(val) {
+  state.bpm = parseInt(val);
+  document.getElementById("bpm-display").textContent = val;
+  // Update slider gradient
+  const slider = document.getElementById("bpm-slider");
+  const pct = ((val - 40) / (200 - 40) * 100).toFixed(1);
+  slider.style.setProperty("--pct", pct + "%");
+}
+
+function setMode(mode, btn) {
+  state.mode = mode;
+  document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  if(mode === "trainer") {
+    showToast("🎓 Eğitmen modu: notaları sırayla çalın");
+  } else if(mode === "listen") {
+    showToast("🎧 Dinleme modu: parçayı dinleyin");
+  } else {
+    showToast("🎹 Serbest mod: istediğiniz notaları çalın");
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════════════════ */
+function selectLevel(lvl, el) {
+  state.currentLevel = lvl;
+  document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("active-level-label").textContent = `Seviye ${lvl}`;
+  buildPieceList(lvl);
+  showToast(`📚 Seviye ${lvl} seçildi`);
+}
+
+function selectCategory(cat, el) {
+  document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
+  el.classList.add("active");
+  const filtered = [...DB.repertoire, ...DB.exercises].filter(p =>
+    p.category && p.category.includes(cat)
+  );
+  buildPieceListFromArray(filtered);
+}
+
+function buildPieceList(level) {
+  const pieces = [...DB.repertoire, ...DB.exercises].filter(p => p.level === level);
+  buildPieceListFromArray(pieces);
+}
+
+function buildPieceListFromArray(pieces) {
+  const list = document.getElementById("piece-list");
+  list.innerHTML = "";
+  pieces.forEach(p => {
+    const div = document.createElement("div");
+    div.className = "nav-item";
+    div.style.animationDelay = "0s";
+    div.onclick = () => loadPiece(p, div);
+    div.innerHTML = `<span class="nav-icon" style="font-size:12px">♩</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${p.title}</span>`;
+    list.appendChild(div);
+  });
+}
+
+function loadPiece(piece, el) {
+  state.currentPiece = piece;
+  state.noteIndex = 0;
+  state.correct = 0; state.wrong = 0;
+  document.querySelectorAll("#piece-list .nav-item").forEach(i => i.classList.remove("active"));
+  if(el) el.classList.add("active");
+
+  document.getElementById("piece-title").textContent = piece.title;
+  document.getElementById("piece-meta").textContent =
+    `${piece.composer || "—"} · Seviye ${piece.level} · ${piece.timeSignature?.beats||4}/4`;
+  document.getElementById("active-piece-label").textContent = piece.title;
+
+  // Update BPM
+  if(piece.bpm) {
+    state.bpm = piece.bpm;
+    document.getElementById("bpm-display").textContent = piece.bpm;
+    document.getElementById("bpm-slider").value = piece.bpm;
+    updateBPM(piece.bpm);
+  }
+
+  stopPlayback();
+  drawScore(piece);
+  updateExpectedNote();
+  updateProgress();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════════ */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════ */
+window.addEventListener("load", async () => {
+  // Hide loading
+  setTimeout(() => {
+    document.getElementById("loading").classList.add("hidden");
+    setTimeout(() => document.getElementById("loading").remove(), 700);
+  }, 1500);
+
+  initVexFlow();
+  loadPiece(DB.repertoire[0], null);
+  buildPieceList(1);
+  updateBPM(80);
+
+  // Init audio context on first user interaction
+  document.addEventListener("click", () => { if(!synth) initAudio(); }, { once: true });
+  showToast("🎹 Trainer Ataoglu hazır — MIDI bağlamak için Bluetooth ikonuna tıklayın");
+});
+</script>
+</body>
+</html>
